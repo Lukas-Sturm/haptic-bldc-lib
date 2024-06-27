@@ -87,6 +87,10 @@ void HapticInterface::haptic_loop(void){
     haptic_target(); // PID Command
 }
 
+void HapticInterface::setEventCallback(void (*callback)(HapticEvt, float, uint16_t)){
+    event_callback = callback;
+}
+
 /**
  * Handles scaling the P term error and clamping error to prevent overshoot.
  * The scaled P error helps to prevent steady state error due to lack of I term (for "rolling" reasons)
@@ -121,9 +125,9 @@ void HapticInterface::correct_pid(void)
     float d_upper_pos_width = radians(8);
     float raw = d_lower_strength + (d_upper_strength - d_lower_strength)/(d_upper_pos_width - d_lower_pos_width)*(detent_width - d_lower_pos_width);
 
-    uint16_t total_positions = haptic_state.detent_profile.end_pos - haptic_state.detent_profile.start_pos + 1;
+    uint16_t total_positions = haptic_state.detent_profile.end_pos + 1;
     // If the error is large, clamp the D term so we don't overdrive the response.
-    haptic_pid->D = total_positions > 0 ? 0 : CLAMP(
+    haptic_pid->D = total_positions > 0 ? 0 : constrain(
         raw,
         min(d_lower_strength, d_upper_strength),
         max(d_lower_strength, d_upper_strength)
@@ -240,7 +244,7 @@ void HapticInterface::detent_handler(void){
         if(motor->sensor_direction != Direction::CCW){
 
             // Check that we are at limit
-            if(haptic_state.current_pos > haptic_state.detent_profile.start_pos){
+            if(haptic_state.current_pos > 0){
                 if(haptic_state.atLimit)
                     haptic_state.wasAtLimit = true;
 
@@ -299,7 +303,7 @@ void HapticInterface::detent_handler(void){
         }
         else{
             // Check if we are at limit
-            if(haptic_state.current_pos > haptic_state.detent_profile.start_pos){
+            if(haptic_state.current_pos > 0){
                 if(haptic_state.atLimit)
                     haptic_state.wasAtLimit = true;
                     
@@ -355,7 +359,7 @@ float HapticInterface::haptic_target(void)
         motor->move(0);
     }
     else {
-        error = CLAMP(
+        error = constrain(
             error,
             -detent_width,
             detent_width
@@ -371,16 +375,7 @@ float HapticInterface::haptic_target(void)
  * Internal detent update handler. Don't use this, usually.
  */
 void HapticInterface::HapticEventCallback(HapticEvt event){
-    UserHapticEventCallback(event, motor->shaft_angle, haptic_state.current_pos);
-}
-
-/**
- * For implementation in user program to get information about detent changes. 
-*/
-void UserHapticEventCallback(HapticEvt event, float currentAngle, uint16_t currentPos){
-    /**
-     * This function should not be modified.
-     * To use this, implement the function in your main application.
-     * extern "C" void HapticEventCallback(HapticEvt event, uint16_t currentPos)
-    */
+    // Serial.println("Haptic Event Fired");
+    if(event_callback != NULL)
+        event_callback(event, motor->shaft_angle, haptic_state.current_pos);
 }

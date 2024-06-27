@@ -50,9 +50,10 @@ public:
     void init(void);
     void haptic_loop(void);
     void HapticEventCallback(HapticEvt);
-    void UserHapticEventCallback(HapticEvt, float, uint16_t) __attribute__((weak));
+    void setEventCallback(void (*callback)(HapticEvt, float, uint16_t));
 
 private:
+    void (*event_callback)(HapticEvt, float, uint16_t) = NULL;
     void offset_detent(void);
     void find_detent(void);
     void detent_handler(void);

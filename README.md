@@ -1,4 +1,9 @@
 # Haptic BLDC Library
+
+###
+Thanks to __VIPQualityPost__, I just changed some stuff because it didn't want to build on my machine.  
+Also changed it so that 0 would always be the minimum pos and start pos would be the current position.  
+
 ### Standalone Arduino library for smartknob-like devices and general digitally controlled knob user interfaces.
 
 A simple, standalone library for implementing basic haptic-controlled knobs as user-interfaces.
@@ -12,26 +17,36 @@ Based on "Drive by wire" interfaces and @scottbez1 SmartKnob project.
 
 ## Example code
 ```cpp
-#include SimpleFOC.h
-#include HapticBLDC.h
+#include <Arduino.h>
+#include <SimpleFOC.h>
+#include "encoders/smoothing/SmoothingSensor.h"
+#include <haptic.h>
 
-BLDCMotor motor = BLDCMotor(7);
-BLDCDriver3PWM driver = BLDCDriver3PWM(U_PWM, V_PWM, W_PWM, EN);
-MagneticEncoderSPI encoder = MagneticEncoderSPI();
+BLDCMotor motor = BLDCMotor(blcd_pp, bldc_pr, bldc_KV, bldc_Li);
+BLDCDriver3PWM driver = BLDCDriver3PWM(PIN_U, PIN_V, PIN_W, PIN_EN_U, PIN_EN_V, PIN_EN_W);
+MagneticSensorMT6701SSI encoder(PIN_MT_CSN);
+SmoothingSensor smooth = SmoothingSensor(encoder, motor);
 HapticInterface haptic = HapticInterface(&motor);
 
 void setup(){
-    encoder.init();
-    driver.init();
+    Serial.begin(115200);
+    SPIClass* spi = new SPIClass(FSPI);
+    spi->begin(PIN_MT_CLOCK, PIN_MT_DATA, -1, PIN_MT_CSN);
+    encoder.init(spi);
 
-    motor.linkSensor(&encoder);
+    driver.voltage_power_supply = driver_supply;
+    driver.voltage_limit = driver_voltage_limit;
+    driver.init();
+    
+    motor.linkSensor(&smooth);
     motor.linkDriver(&driver);
+    motor.current_limit = 1.22;
     motor.init();
     motor.initFOC();
-
+    
     haptic.init();
-    haptic.haptic_config->detent_num = 6; //6 positions for knob
 
+    delay(1500);
 }
 
 void loop(){
