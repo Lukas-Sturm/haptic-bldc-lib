@@ -4,7 +4,6 @@
 #include <SimpleFOC.h>
 #include <SimpleFOCDrivers.h>
 #include "encoders/mt6701/MagneticSensorMT6701SSI.h"
-#include <motor.h>
 #include "haptic_api.h"
  
 class HapticState 
